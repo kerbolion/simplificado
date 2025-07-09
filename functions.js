@@ -3,59 +3,45 @@ const functions = {
   // Funciones disponibles
   available: {},
   
-  // Inicializar funciones predeterminadas
+  // Inicializar funciones
   init() {
-    this.loadDefaults();
+    this.load();
+    // Solo cargar defaults si no hay funciones guardadas
+    if (Object.keys(this.available).length === 0) {
+      this.loadDefaults();
+    }
     this.render();
   },
 
   // Cargar funciones predeterminadas
   loadDefaults() {
     this.available = {
-      'search_products': {
-        name: 'Buscar productos',
-        description: 'Busca productos en el inventario',
+      'formularios': {
+        name: 'Formularios',
+        description: 'Crea un formulario dinámico con campos personalizables',
         params: [
-          { name: 'search_text', label: 'Texto a buscar', type: 'text', required: true }
+          { 
+            name: 'nombre_formulario', 
+            label: 'Nombre del formulario *', 
+            type: 'text', 
+            required: true 
+          }
         ]
       },
-      'register_order': {
-        name: 'Registrar pedido',
-        description: 'Registra un nuevo pedido en el sistema',
-        params: [
-          { name: 'customer_name', label: 'Nombre del cliente', type: 'text', required: true },
-          { name: 'phone', label: 'Teléfono', type: 'text', required: true },
-          { name: 'products', label: 'Productos', type: 'textarea', required: true },
-          { name: 'total', label: 'Total', type: 'text', required: true },
-          { name: 'address', label: 'Dirección', type: 'textarea', required: false },
-          { name: 'delivery_type', label: 'Tipo de entrega', type: 'select', 
-            options: ['pickup', 'delivery'], required: true }
-        ]
+      'manage_contact_tags': {
+        name: 'Gestionar tags de contacto',
+        description: 'Permite agregar o eliminar tags de contactos',
+        params: []
       },
-      'send_notification': {
+      'send_ai_match_rule_to_user': {
+        name: 'Enviar regla de IA al usuario',
+        description: 'Envía una regla de coincidencia específica de IA al usuario',
+        params: []
+      },
+      'send_notification_message': {
         name: 'Enviar notificación',
-        description: 'Envía una notificación por WhatsApp',
-        params: [
-          { name: 'phone', label: 'Teléfono destino', type: 'text', required: true },
-          { name: 'message', label: 'Mensaje', type: 'textarea', required: true }
-        ]
-      },
-      'manage_tags': {
-        name: 'Gestionar etiquetas',
-        description: 'Agrega o elimina etiquetas de contactos',
-        params: [
-          { name: 'operation', label: 'Operación', type: 'select', 
-            options: ['add', 'remove'], required: true },
-          { name: 'tag_name', label: 'Nombre de la etiqueta', type: 'text', required: true }
-        ]
-      },
-      'create_form': {
-        name: 'Crear formulario',
-        description: 'Crea un formulario dinámico para recopilar información',
-        params: [
-          { name: 'form_name', label: 'Nombre del formulario', type: 'text', required: true },
-          { name: 'fields', label: 'Campos (JSON)', type: 'textarea', required: true }
-        ]
+        description: 'Envía una notificación por WhatsApp al encargado del negocio',
+        params: []
       }
     };
     
@@ -102,6 +88,9 @@ const functions = {
 
     this.save();
     this.render();
+    
+    // Actualizar prompt cuando se edita una función
+    updatePrompt();
   },
 
   // Eliminar función
@@ -151,6 +140,7 @@ const functions = {
     func.params.push(param);
     this.save();
     this.render();
+    updatePrompt();
   },
 
   // Eliminar parámetro
@@ -161,6 +151,7 @@ const functions = {
     func.params.splice(paramIndex, 1);
     this.save();
     this.render();
+    updatePrompt();
   },
 
   // Renderizar lista de funciones
@@ -224,6 +215,13 @@ const functions = {
     return this.available;
   },
 
+  // Establecer todas las funciones (usado por projects.js)
+  setAll(functions) {
+    this.available = functions;
+    this.save();
+    this.render();
+  },
+
   // Validar parámetros de función
   validateParams(functionKey, params) {
     const func = this.available[functionKey];
@@ -252,10 +250,10 @@ const functions = {
         this.available = JSON.parse(saved);
       } catch (e) {
         console.error('Error loading functions:', e);
-        this.loadDefaults();
+        this.available = {};
       }
     } else {
-      this.loadDefaults();
+      this.available = {};
     }
   },
 
@@ -295,6 +293,7 @@ const functions = {
           }
           this.save();
           this.render();
+          updatePrompt();
         } catch (error) {
           alert('Error al importar archivo: ' + error.message);
         }

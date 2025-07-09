@@ -12,6 +12,17 @@
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
+  
+  /* Colores para el output */
+  --output-bg: #1e1e1e;
+  --output-text: #d4d4d4;
+  --color-title: #569cd6;
+  --color-section: #4ec9b0;
+  --color-function: #dcdcaa;
+  --color-number: #b5cea8;
+  --color-keyword: #c586c0;
+  --color-string: #ce9178;
+  --color-comment: #6a9955;
 }
 
 [data-theme="dark"] {
@@ -25,6 +36,10 @@
   --text-accent: #569cd6;
   --input-bg: #3c3c3c;
   --shadow-light: #00000020;
+  
+  /* Mantener colores del output consistentes en modo oscuro */
+  --output-bg: #1e1e1e;
+  --output-text: #d4d4d4;
 }
 
 * { 
@@ -53,13 +68,14 @@ body {
 }
 
 .panel.output {
-  background: var(--bg-tertiary);
-  font-family: 'Consolas', monospace;
+  background: var(--output-bg);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
   position: relative;
   padding-top: 80px;
+  color: var(--output-text);
 }
 
 /* Botón de modo oscuro */
@@ -398,6 +414,93 @@ button:hover {
   border-radius: 4px;
   padding: 8px;
   margin-bottom: 8px;
+}
+
+/* ==========================================
+   COLORES PARA EL OUTPUT (PANEL DERECHO)
+   ========================================== */
+
+/* Títulos principales (Prompt para Asistente IA) */
+.output-title {
+  color: var(--color-title);
+  font-weight: bold;
+}
+
+/* Secciones principales (**Texto**) */
+.output-section {
+  color: var(--color-section);
+  font-weight: bold;
+}
+
+/* Números de pasos */
+.output-step-number {
+  color: var(--color-number);
+  font-weight: bold;
+}
+
+/* Funciones ejecutadas */
+.output-function {
+  color: var(--color-function);
+  font-style: italic;
+}
+
+/* Palabras clave */
+.output-keyword {
+  color: var(--color-keyword);
+}
+
+/* Strings/texto entre comillas */
+.output-string {
+  color: var(--color-string);
+}
+
+/* Comentarios */
+.output-comment {
+  color: var(--color-comment);
+  font-style: italic;
+}
+
+/* Preguntas en FAQ */
+.output-question {
+  color: var(--color-title);
+  font-weight: bold;
+}
+
+/* Respuestas en FAQ */
+.output-answer {
+  color: var(--output-text);
+  margin-left: 20px;
+}
+
+/* Campos personalizados */
+.custom-field {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.custom-field .delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.custom-field .form-group {
+  margin-bottom: 8px;
+}
+
+.custom-field .form-group:last-child {
+  margin-bottom: 0;
 }
 
 /* Responsive */

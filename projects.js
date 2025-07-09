@@ -215,7 +215,9 @@ const projects = {
       rules: state.rules,
       faqs: state.faqs,
       flows: state.flows,
-      currentFlow: state.currentFlow
+      currentFlow: state.currentFlow,
+      // IMPORTANTE: Incluir las funciones en el estado del proyecto
+      functions: functions.getAll()
     };
   },
 
@@ -246,6 +248,13 @@ const projects = {
     if (data.faqs) state.faqs = data.faqs;
     if (data.flows) state.flows = data.flows;
     if (data.currentFlow !== undefined) state.currentFlow = data.currentFlow;
+    
+    // IMPORTANTE: Cargar las funciones del proyecto
+    if (data.functions) {
+      functions.available = data.functions;
+      functions.save();
+      functions.render();
+    }
   },
 
   // Resetear estado a valores por defecto
@@ -280,6 +289,9 @@ const projects = {
     
     state.currentFlow = 0;
     state.currentTab = 0;
+    
+    // IMPORTANTE: Resetear funciones a las predeterminadas
+    functions.loadDefaults();
   },
 
   // Renderizar selector de proyectos

@@ -57,6 +57,7 @@ function showTab(index) {
 function addRule() {
   state.rules.push('');
   renderRules();
+  scheduleAutoSave();
 }
 
 function removeRule(index) {
@@ -64,12 +65,14 @@ function removeRule(index) {
     state.rules.splice(index, 1);
     renderRules();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
 function updateRule(index, value) {
   state.rules[index] = value;
   updatePrompt();
+  scheduleAutoSave();
 }
 
 function renderRules() {
@@ -89,6 +92,7 @@ function renderRules() {
 function addFAQ() {
   state.faqs.push({ question: '', answer: '' });
   renderFAQs();
+  scheduleAutoSave();
 }
 
 function removeFAQ(index) {
@@ -96,12 +100,14 @@ function removeFAQ(index) {
     state.faqs.splice(index, 1);
     renderFAQs();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
 function updateFAQ(index, field, value) {
   state.faqs[index][field] = value;
   updatePrompt();
+  scheduleAutoSave();
 }
 
 function renderFAQs() {
@@ -132,6 +138,7 @@ function addFlow() {
     renderFlows();
     renderSteps();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
@@ -147,6 +154,7 @@ function deleteFlow() {
     renderFlows();
     renderSteps();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
@@ -162,6 +170,7 @@ function renameFlow() {
     state.flows[state.currentFlow].name = newName;
     renderFlows();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
@@ -183,6 +192,7 @@ function addStep() {
   state.flows[state.currentFlow].steps.push({ text: '', functions: [] });
   renderSteps();
   updatePrompt();
+  scheduleAutoSave();
 }
 
 function removeStep(index) {
@@ -190,6 +200,7 @@ function removeStep(index) {
     state.flows[state.currentFlow].steps.splice(index, 1);
     renderSteps();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
@@ -201,12 +212,14 @@ function moveStep(index, direction) {
     [steps[index], steps[newIndex]] = [steps[newIndex], steps[index]];
     renderSteps();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
 function updateStepText(index, value) {
   state.flows[state.currentFlow].steps[index].text = value;
   updatePrompt();
+  scheduleAutoSave();
 }
 
 function renderSteps() {
@@ -291,7 +304,93 @@ function renderStepFunction(stepIndex, funcIndex, func) {
         </select>
       </div>
       
-      ${renderFunctionParams(stepIndex, funcIndex, func, funcDef)}
+      ${renderPredefinedParams(stepIndex, funcIndex, func, funcDef)}
+      ${renderCustomFields(stepIndex, funcIndex, func)}
+    </div>
+  `;
+}
+
+function renderPredefinedParams(stepIndex, funcIndex, func, funcDef) {
+  if (!funcDef.params || funcDef.params.length === 0) {
+    return '';
+  }
+  
+  return `
+    <div style="margin-top: 12px;">
+      ${funcDef.params.map(param => {
+        const value = func.params ? func.params[param.name] || '' : '';
+        const required = param.required ? ' *' : '';
+        
+        if (param.type === 'select' && param.options) {
+          return `
+            <div class="form-group">
+              <label>${param.label}${required}:</label>
+              <select onchange="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">
+                <option value="">Seleccionar...</option>
+                ${param.options.map(option => 
+                  `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`
+                ).join('')}
+              </select>
+            </div>
+          `;
+        } else if (param.type === 'textarea') {
+          return `
+            <div class="form-group">
+              <label>${param.label}${required}:</label>
+              <textarea placeholder="Ingresa ${param.label.toLowerCase()}..." 
+                        oninput="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">${escapeHtml(value)}</textarea>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="form-group">
+              <label>${param.label}${required}:</label>
+              <input type="text" value="${escapeHtml(value)}" 
+                     placeholder="Ingresa ${param.label.toLowerCase()}..."
+                     oninput="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">
+            </div>
+          `;
+        }
+      }).join('')}
+    </div>
+  `;
+}
+
+function updateFunctionParam(stepIndex, funcIndex, paramName, value) {
+  const func = state.flows[state.currentFlow].steps[stepIndex].functions[funcIndex];
+  if (!func.params) func.params = {};
+  func.params[paramName] = value;
+  updatePrompt();
+  scheduleAutoSave();
+}
+
+function renderCustomFields(stepIndex, funcIndex, func) {
+  const customFields = func.customFields || [];
+  
+  return `
+    <div style="margin-top: 12px;">
+      <label style="color: var(--text-accent); margin-bottom: 8px; display: block;">Campos personalizados:</label>
+      
+      ${customFields.map((field, fieldIndex) => `
+        <div class="custom-field" style="background: var(--bg-tertiary); border: 1px solid var(--border-secondary); border-radius: 6px; padding: 12px; margin-bottom: 8px; position: relative;">
+          <button class="delete-btn" onclick="removeCustomField(${stepIndex}, ${funcIndex}, ${fieldIndex})" style="top: 4px; right: 4px;">×</button>
+          
+          <div class="form-group">
+            <label>Nombre del campo:</label>
+            <input type="text" value="${escapeHtml(field.name || '')}" 
+                   placeholder="Ej: nombre_formulario, whatsapp, mensaje..."
+                   oninput="updateCustomField(${stepIndex}, ${funcIndex}, ${fieldIndex}, 'name', this.value)">
+          </div>
+          
+          <div class="form-group">
+            <label>Valor:</label>
+            <textarea placeholder="Valor del campo..." 
+                      oninput="updateCustomField(${stepIndex}, ${funcIndex}, ${fieldIndex}, 'value', this.value)">${escapeHtml(field.value || '')}</textarea>
+          </div>
+        </div>
+      `).join('')}
+      
+      <button type="button" class="btn-small" onclick="addCustomField(${stepIndex}, ${funcIndex})">➕ Agregar Campo</button>
     </div>
   `;
 }
@@ -349,11 +448,12 @@ function addFunction(stepIndex) {
   
   state.flows[state.currentFlow].steps[stepIndex].functions.push({
     type: firstFunc,
-    params: {}
+    customFields: []
   });
   
   renderSteps();
   updatePrompt();
+  scheduleAutoSave();
 }
 
 function removeFunction(stepIndex, funcIndex) {
@@ -361,27 +461,55 @@ function removeFunction(stepIndex, funcIndex) {
     state.flows[state.currentFlow].steps[stepIndex].functions.splice(funcIndex, 1);
     renderSteps();
     updatePrompt();
+    scheduleAutoSave();
   }
 }
 
 function changeFunctionType(stepIndex, funcIndex, newType) {
   state.flows[state.currentFlow].steps[stepIndex].functions[funcIndex] = {
     type: newType,
-    params: {}
+    customFields: []
   };
   renderSteps();
   updatePrompt();
+  scheduleAutoSave();
 }
 
-function updateFunctionParam(stepIndex, funcIndex, paramName, value) {
+function addCustomField(stepIndex, funcIndex) {
   const func = state.flows[state.currentFlow].steps[stepIndex].functions[funcIndex];
-  if (!func.params) func.params = {};
-  func.params[paramName] = value;
+  if (!func.customFields) func.customFields = [];
+  
+  func.customFields.push({
+    name: '',
+    value: ''
+  });
+  
+  renderSteps();
+  scheduleAutoSave();
+}
+
+function removeCustomField(stepIndex, funcIndex, fieldIndex) {
+  if (confirm('¿Eliminar este campo?')) {
+    const func = state.flows[state.currentFlow].steps[stepIndex].functions[funcIndex];
+    func.customFields.splice(fieldIndex, 1);
+    renderSteps();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function updateCustomField(stepIndex, funcIndex, fieldIndex, property, value) {
+  const func = state.flows[state.currentFlow].steps[stepIndex].functions[funcIndex];
+  if (!func.customFields) func.customFields = [];
+  if (!func.customFields[fieldIndex]) func.customFields[fieldIndex] = {};
+  
+  func.customFields[fieldIndex][property] = value;
   updatePrompt();
+  scheduleAutoSave();
 }
 
 // ==========================================
-// GENERACIÓN DE PROMPTS
+// GENERACIÓN DE PROMPTS CON COLORES
 // ==========================================
 function updatePrompt() {
   const businessName = document.getElementById('business-name')?.value || '[Nombre negocio]';
@@ -391,66 +519,95 @@ function updatePrompt() {
   const includeGreeting = document.getElementById('include-greeting')?.checked || false;
   const includeFarewell = document.getElementById('include-farewell')?.checked || false;
 
-  let prompt = `Prompt para Asistente IA – "${businessName}"\n\n`;
+  let html = '';
+  
+  // Título principal con color
+  html += `<span class="output-title">Prompt para Asistente IA – "${businessName}"</span>\n\n`;
   
   // Contexto principal
-  prompt += `Actúa como el encargado de tomar pedidos para "${businessName}", por WhatsApp.\n`;
-  prompt += `Sigue este flujo de conversación usando mensajes concisos, emojis y negritas con asteriscos *texto*.\n`;
-  prompt += `Mantente siempre en contexto de pedidos.\n\n`;
+  html += `Actúa como el encargado de tomar pedidos para "${businessName}", por WhatsApp.\n`;
+  html += `Sigue este flujo de conversación usando mensajes concisos, emojis y negritas con asteriscos *texto*.\n`;
+  html += `Mantente siempre en contexto de pedidos.\n\n`;
 
   // Instrucciones generales
-  prompt += `**Instrucciones Generales:**\n`;
-  if (tone) prompt += `- Tono: ${tone}\n`;
-  if (format) prompt += `- Formato: ${format}\n`;
-  if (includeGreeting) prompt += `- Incluye saludo inicial\n`;
-  if (includeFarewell) prompt += `- Incluye despedida\n\n`;
+  html += `<span class="output-section">**Instrucciones Generales:**</span>\n`;
+  if (tone) html += `- Tono: ${tone}\n`;
+  if (format) html += `- Formato: ${format}\n`;
+  if (includeGreeting) html += `- Incluye saludo inicial\n`;
+  if (includeFarewell) html += `- Incluye despedida\n\n`;
 
   // Reglas de comportamiento
   const validRules = state.rules.filter(r => r.trim());
   if (validRules.length > 0) {
-    prompt += `**Reglas de comportamiento:**\n`;
+    html += `<span class="output-section">**Reglas de comportamiento:**</span>\n`;
     validRules.forEach((rule, index) => {
-      prompt += `${index + 1}. ${rule}\n`;
+      html += `<span class="output-step-number">${index + 1}.</span> ${rule}\n`;
     });
-    prompt += '\n';
+    html += '\n';
   }
 
   // Preguntas frecuentes
   const validFaqs = state.faqs.filter(f => f.question.trim() && f.answer.trim());
   if (validFaqs.length > 0) {
-    prompt += `**Preguntas Frecuentes:**\n`;
+    html += `<span class="output-section">**Preguntas Frecuentes:**</span>\n`;
     validFaqs.forEach(faq => {
-      prompt += `- **${faq.question}**\n  ${faq.answer}\n`;
+      html += `- <span class="output-question">**${faq.question}**</span>\n`;
+      html += `  <span class="output-answer">${faq.answer}</span>\n`;
     });
-    prompt += '\n';
+    html += '\n';
   }
 
   // Flujos
   state.flows.forEach((flow, flowIndex) => {
     const title = state.flows.length === 1 ? "**Flujo principal:**" : `**${flow.name}:**`;
-    prompt += `${title}\n\n`;
+    html += `<span class="output-section">${title}</span>\n\n`;
     
     flow.steps.forEach((step, stepIndex) => {
-      prompt += `${stepIndex + 1}. ${step.text}`;
+      html += `<span class="output-step-number">${stepIndex + 1}.</span> ${step.text}`;
       
-      // Agregar funciones del paso
+      // Agregar funciones del paso con colores
       if (step.functions && step.functions.length > 0) {
         step.functions.forEach(func => {
           const funcDef = functions.get(func.type);
           if (funcDef) {
-            const params = Object.entries(func.params || {})
-              .map(([key, value]) => `${key}: "${value}"`)
-              .join(', ');
-            prompt += `\n    Ejecuta la función: ${funcDef.name}({${params}})`;
+            const customFields = func.customFields || [];
+            const params = func.params || {};
+            
+            // Determinar el nombre de la función a mostrar
+            let functionName = func.type; // Usar el nombre técnico por defecto
+            let displayParams = [];
+            
+            // Para la función "formularios", usar el parámetro nombre_formulario como nombre
+            if (func.type === 'formularios' && params.nombre_formulario) {
+              functionName = params.nombre_formulario;
+              // Solo agregar campos personalizados como parámetros
+              displayParams = customFields
+                .filter(field => field.name && field.value)
+                .map(field => `<span class="output-keyword">${field.name}</span>: <span class="output-string">"${field.value}"</span>`);
+            } else {
+              // Para otras funciones, usar el nombre técnico y agregar todos los parámetros
+              const predefinedParams = Object.entries(params)
+                .filter(([key, value]) => value)
+                .map(([key, value]) => `<span class="output-keyword">${key}</span>: <span class="output-string">"${value}"</span>`);
+              
+              const customParams = customFields
+                .filter(field => field.name && field.value)
+                .map(field => `<span class="output-keyword">${field.name}</span>: <span class="output-string">"${field.value}"</span>`);
+              
+              displayParams = [...predefinedParams, ...customParams];
+            }
+            
+            const allParams = displayParams.join(', ');
+            html += `\n    <span class="output-function">Ejecuta la función: ${functionName}({${allParams}})</span>`;
           }
         });
       }
-      prompt += '\n\n';
+      html += '\n\n';
     });
   });
 
-  // Actualizar output
-  document.getElementById('output').textContent = prompt.trim();
+  // Actualizar output con HTML coloreado
+  document.getElementById('output').innerHTML = html.trim();
 }
 
 // ==========================================
@@ -470,11 +627,13 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-function copyPrompt() {
-  const text = document.getElementById('output').textContent;
+function copyPrompt(event) {
+  // Para copiar, obtenemos solo el texto sin HTML
+  const outputElement = document.getElementById('output');
+  const text = outputElement.textContent || outputElement.innerText;
   
   navigator.clipboard.writeText(text).then(() => {
-    const btn = event.target.closest('.copy-btn');
+    const btn = event ? event.target.closest('.copy-btn') : document.querySelector('.copy-btn');
     const originalHTML = btn.innerHTML;
     
     btn.innerHTML = '<span>✅</span><span>¡Copiado!</span>';
@@ -534,7 +693,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ==========================================
-// AUTO-GUARDADO (OPCIONAL)
+// AUTO-GUARDADO
 // ==========================================
 let autoSaveTimeout;
 
@@ -542,12 +701,18 @@ function scheduleAutoSave() {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(() => {
     if (projects.current) {
-      console.log('Auto-guardando...');
+      console.log('Auto-guardando proyecto...');
       projects.saveProject();
     }
-  }, 30000); // Auto-guardar cada 30 segundos
+  }, 5000); // Auto-guardar cada 5 segundos después de cambios
 }
 
 // Programar auto-guardado cuando hay cambios
-document.addEventListener('input', scheduleAutoSave);
-document.addEventListener('change', scheduleAutoSave);
+document.addEventListener('input', () => {
+  updatePrompt();
+  scheduleAutoSave();
+});
+document.addEventListener('change', () => {
+  updatePrompt();
+  scheduleAutoSave();
+});
