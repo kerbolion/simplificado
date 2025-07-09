@@ -2,6 +2,7 @@
 const state = {
   currentTab: 0,
   currentFlow: 0,
+  currentSection: 0,
   flows: [{
     name: "Flujo Principal",
     steps: [
@@ -9,10 +10,28 @@ const state = {
       { text: "Solicita el pedido (productos y cantidades) y, si aplica, la dirección para envío.", functions: [] }
     ]
   }],
-  rules: [
-    "Pregunta una cosa a la vez",
-    "Envía los enlaces sin formato", 
-    "No proporciones información fuera de este documento"
+  sections: [
+    {
+      name: "Instrucciones Generales",
+      fields: [
+        { type: "text", label: "Configuración", items: ["Profesional, cordial y claro", "Respuestas breves, máximo 3 renglones"] },
+        { type: "textarea", label: "Contexto", value: "Actúa como encargado de tomar pedidos por WhatsApp" }
+      ]
+    },
+    {
+      name: "Reglas de comportamiento", 
+      fields: [
+        { 
+          type: "list", 
+          label: "Reglas", 
+          items: [
+            "Pregunta una cosa a la vez",
+            "Envía los enlaces sin formato", 
+            "No proporciones información fuera de este documento"
+          ]
+        }
+      ]
+    }
   ],
   faqs: [
     { question: "¿Cuáles son los horarios de atención?", answer: "Atendemos de lunes a domingo de 8:00 AM a 10:00 PM" },
@@ -25,18 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
   functions.load();
   functions.init();
   projects.init();
-  loadFormDefaults();
   renderAll();
   updatePrompt();
 });
-
-// Cargar valores por defecto del formulario
-function loadFormDefaults() {
-  document.getElementById('tone').value = 'Profesional, cordial y claro';
-  document.getElementById('format').value = 'Respuestas breves, máximo 3 renglones';
-  document.getElementById('include-greeting').checked = true;
-  document.getElementById('include-farewell').checked = true;
-}
 
 // ==========================================
 // GESTIÓN DE PESTAÑAS
@@ -52,38 +62,287 @@ function showTab(index) {
 }
 
 // ==========================================
-// GESTIÓN DE REGLAS
+// GESTIÓN DE SECCIONES
 // ==========================================
-function addRule() {
-  state.rules.push('');
-  renderRules();
-  scheduleAutoSave();
-}
-
-function removeRule(index) {
-  if (confirm('¿Eliminar esta regla?')) {
-    state.rules.splice(index, 1);
-    renderRules();
+function addSection() {
+  const name = prompt("Nombre de la nueva sección:", `Sección ${state.sections.length + 1}`);
+  if (name && name.trim()) {
+    state.sections.push({ 
+      name: name.trim(), 
+      fields: [] 
+    });
+    state.currentSection = state.sections.length - 1;
+    renderSections();
+    renderSectionContent();
     updatePrompt();
     scheduleAutoSave();
   }
 }
 
-function updateRule(index, value) {
-  state.rules[index] = value;
+function deleteSection() {
+  if (state.sections.length <= 1) {
+    alert("Debe haber al menos una sección");
+    return;
+  }
+  
+  if (confirm(`¿Eliminar la sección "${state.sections[state.currentSection].name}"?`)) {
+    state.sections.splice(state.currentSection, 1);
+    state.currentSection = Math.max(0, state.currentSection - 1);
+    renderSections();
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function changeSection() {
+  state.currentSection = parseInt(document.getElementById('section-selector').value);
+  renderSectionContent();
+  document.getElementById('section-name').value = state.sections[state.currentSection].name;
+}
+
+function renameSection() {
+  const newName = document.getElementById('section-name').value.trim();
+  if (newName) {
+    state.sections[state.currentSection].name = newName;
+    renderSections();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function renderSections() {
+  const selector = document.getElementById('section-selector');
+  selector.innerHTML = state.sections.map((section, index) => 
+    `<option value="${index}" ${index === state.currentSection ? 'selected' : ''}>${escapeHtml(section.name)}</option>`
+  ).join('');
+  
+  if (document.getElementById('section-name')) {
+    document.getElementById('section-name').value = state.sections[state.currentSection].name;
+  }
+}
+
+// ==========================================
+// GESTIÓN DE CONTENIDO DE SECCIONES
+// ==========================================
+function addTextField() {
+  const label = prompt("Etiqueta del campo:");
+  if (label && label.trim()) {
+    state.sections[state.currentSection].fields.push({
+      type: "text",
+      label: label.trim(),
+      items: [""]
+    });
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function addTextAreaField() {
+  const label = prompt("Etiqueta del área de texto:");
+  if (label && label.trim()) {
+    state.sections[state.currentSection].fields.push({
+      type: "textarea",
+      label: label.trim(),
+      value: ""
+    });
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function addListField() {
+  const label = prompt("Título de la lista:");
+  if (label && label.trim()) {
+    state.sections[state.currentSection].fields.push({
+      type: "list",
+      label: label.trim(),
+      items: [""]
+    });
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function removeField(fieldIndex) {
+  if (confirm("¿Eliminar este campo?")) {
+    state.sections[state.currentSection].fields.splice(fieldIndex, 1);
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function moveField(fieldIndex, direction) {
+  const fields = state.sections[state.currentSection].fields;
+  const newIndex = fieldIndex + direction;
+  
+  if (newIndex >= 0 && newIndex < fields.length) {
+    [fields[fieldIndex], fields[newIndex]] = [fields[newIndex], fields[fieldIndex]];
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function updateTextField(fieldIndex, value) {
+  state.sections[state.currentSection].fields[fieldIndex].value = value;
   updatePrompt();
   scheduleAutoSave();
 }
 
-function renderRules() {
-  const container = document.getElementById('rules-container');
-  container.innerHTML = state.rules.map((rule, index) => `
-    <div class="list-item">
-      <input type="text" value="${escapeHtml(rule)}" placeholder="Nueva regla..." 
-             oninput="updateRule(${index}, this.value)">
-      <button class="btn-small btn-danger" onclick="removeRule(${index})">×</button>
-    </div>
-  `).join('');
+// Nuevas funciones para campos de texto como listas
+function addTextItem(fieldIndex) {
+  state.sections[state.currentSection].fields[fieldIndex].items.push('');
+  renderSectionContent();
+  scheduleAutoSave();
+}
+
+function removeTextItem(fieldIndex, itemIndex) {
+  if (confirm('¿Eliminar este elemento?')) {
+    state.sections[state.currentSection].fields[fieldIndex].items.splice(itemIndex, 1);
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function moveTextItem(fieldIndex, itemIndex, direction) {
+  const items = state.sections[state.currentSection].fields[fieldIndex].items;
+  const newIndex = itemIndex + direction;
+  
+  if (newIndex >= 0 && newIndex < items.length) {
+    [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function updateTextItem(fieldIndex, itemIndex, value) {
+  state.sections[state.currentSection].fields[fieldIndex].items[itemIndex] = value;
+  updatePrompt();
+  scheduleAutoSave();
+}
+
+function addListItem(fieldIndex) {
+  state.sections[state.currentSection].fields[fieldIndex].items.push('');
+  renderSectionContent();
+  scheduleAutoSave();
+}
+
+function removeListItem(fieldIndex, itemIndex) {
+  if (confirm('¿Eliminar este elemento?')) {
+    state.sections[state.currentSection].fields[fieldIndex].items.splice(itemIndex, 1);
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function moveListItem(fieldIndex, itemIndex, direction) {
+  const items = state.sections[state.currentSection].fields[fieldIndex].items;
+  const newIndex = itemIndex + direction;
+  
+  if (newIndex >= 0 && newIndex < items.length) {
+    [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+    renderSectionContent();
+    updatePrompt();
+    scheduleAutoSave();
+  }
+}
+
+function updateListItem(fieldIndex, itemIndex, value) {
+  state.sections[state.currentSection].fields[fieldIndex].items[itemIndex] = value;
+  updatePrompt();
+  scheduleAutoSave();
+}
+
+function renderSectionContent() {
+  const container = document.getElementById('section-content-container');
+  const currentSection = state.sections[state.currentSection];
+  
+  container.innerHTML = currentSection.fields.map((field, fieldIndex) => {
+    // Controles de reorganización para campos
+    const fieldControls = `
+      <div class="step-controls">
+        ${fieldIndex > 0 ? `<button class="step-btn" onclick="moveField(${fieldIndex}, -1)" title="Subir">↑</button>` : ''}
+        ${fieldIndex < currentSection.fields.length - 1 ? `<button class="step-btn" onclick="moveField(${fieldIndex}, 1)" title="Bajar">↓</button>` : ''}
+        <button class="step-btn btn-danger" onclick="removeField(${fieldIndex})" title="Eliminar">×</button>
+      </div>
+    `;
+
+    if (field.type === 'text') {
+      // Asegurar que items existe
+      if (!field.items) field.items = [field.value || ''];
+      
+      return `
+        <div class="step">
+          <div class="step-header">
+            <span class="step-number">📝 ${escapeHtml(field.label)}</span>
+            ${fieldControls}
+          </div>
+          
+          <div class="dynamic-list">
+            ${field.items.map((item, itemIndex) => `
+              <div class="list-item">
+                <input type="text" value="${escapeHtml(item)}" placeholder="Nuevo elemento..." 
+                       oninput="updateTextItem(${fieldIndex}, ${itemIndex}, this.value)">
+                <div class="list-item-controls">
+                  ${itemIndex > 0 ? `<button class="btn-small" onclick="moveTextItem(${fieldIndex}, ${itemIndex}, -1)" title="Subir">↑</button>` : ''}
+                  ${itemIndex < field.items.length - 1 ? `<button class="btn-small" onclick="moveTextItem(${fieldIndex}, ${itemIndex}, 1)" title="Bajar">↓</button>` : ''}
+                  <button class="btn-small btn-danger" onclick="removeTextItem(${fieldIndex}, ${itemIndex})">×</button>
+                </div>
+              </div>
+            `).join('')}
+            <button type="button" class="btn-small" onclick="addTextItem(${fieldIndex})">➕ Agregar Elemento</button>
+          </div>
+        </div>
+      `;
+    } else if (field.type === 'textarea') {
+      return `
+        <div class="step">
+          <div class="step-header">
+            <span class="step-number">📄 ${escapeHtml(field.label)}</span>
+            ${fieldControls}
+          </div>
+          
+          <div class="form-group">
+            <textarea placeholder="Ingresa el texto..." 
+                      oninput="updateTextField(${fieldIndex}, this.value)">${escapeHtml(field.value)}</textarea>
+          </div>
+        </div>
+      `;
+    } else if (field.type === 'list') {
+      return `
+        <div class="step">
+          <div class="step-header">
+            <span class="step-number">📋 ${escapeHtml(field.label)}</span>
+            ${fieldControls}
+          </div>
+          
+          <div class="dynamic-list">
+            ${field.items.map((item, itemIndex) => `
+              <div class="list-item">
+                <input type="text" value="${escapeHtml(item)}" placeholder="Nuevo elemento..." 
+                       oninput="updateListItem(${fieldIndex}, ${itemIndex}, this.value)">
+                <div class="list-item-controls">
+                  ${itemIndex > 0 ? `<button class="btn-small" onclick="moveListItem(${fieldIndex}, ${itemIndex}, -1)" title="Subir">↑</button>` : ''}
+                  ${itemIndex < field.items.length - 1 ? `<button class="btn-small" onclick="moveListItem(${fieldIndex}, ${itemIndex}, 1)" title="Bajar">↓</button>` : ''}
+                  <button class="btn-small btn-danger" onclick="removeListItem(${fieldIndex}, ${itemIndex})">×</button>
+                </div>
+              </div>
+            `).join('')}
+            <button type="button" class="btn-small" onclick="addListItem(${fieldIndex})">➕ Agregar Elemento</button>
+          </div>
+        </div>
+      `;
+    }
+    return '';
+  }).join('');
 }
 
 // ==========================================
@@ -395,48 +654,6 @@ function renderCustomFields(stepIndex, funcIndex, func) {
   `;
 }
 
-function renderFunctionParams(stepIndex, funcIndex, func, funcDef) {
-  if (!funcDef.params || funcDef.params.length === 0) {
-    return '<p style="color: var(--text-secondary); font-style: italic;">Esta función no requiere parámetros.</p>';
-  }
-  
-  return funcDef.params.map(param => {
-    const value = func.params ? func.params[param.name] || '' : '';
-    const required = param.required ? ' *' : '';
-    
-    if (param.type === 'select' && param.options) {
-      return `
-        <div class="form-group">
-          <label>${param.label}${required}:</label>
-          <select onchange="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">
-            <option value="">Seleccionar...</option>
-            ${param.options.map(option => 
-              `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`
-            ).join('')}
-          </select>
-        </div>
-      `;
-    } else if (param.type === 'textarea') {
-      return `
-        <div class="form-group">
-          <label>${param.label}${required}:</label>
-          <textarea placeholder="Ingresa ${param.label.toLowerCase()}..." 
-                    oninput="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">${escapeHtml(value)}</textarea>
-        </div>
-      `;
-    } else {
-      return `
-        <div class="form-group">
-          <label>${param.label}${required}:</label>
-          <input type="text" value="${escapeHtml(value)}" 
-                 placeholder="Ingresa ${param.label.toLowerCase()}..."
-                 oninput="updateFunctionParam(${stepIndex}, ${funcIndex}, '${param.name}', this.value)">
-        </div>
-      `;
-    }
-  }).join('');
-}
-
 function addFunction(stepIndex) {
   const availableFunctions = functions.getAll();
   const firstFunc = Object.keys(availableFunctions)[0];
@@ -509,53 +726,50 @@ function updateCustomField(stepIndex, funcIndex, fieldIndex, property, value) {
 }
 
 // ==========================================
-// GENERACIÓN DE PROMPTS CON COLORES
+// GENERACIÓN DE PROMPTS ACTUALIZADA
 // ==========================================
 function updatePrompt() {
   const businessName = document.getElementById('business-name')?.value || '[Nombre negocio]';
-  const welcomeMessage = document.getElementById('welcome-message')?.value || '';
-  const tone = document.getElementById('tone')?.value || '';
-  const format = document.getElementById('format')?.value || '';
-  const includeGreeting = document.getElementById('include-greeting')?.checked || false;
-  const includeFarewell = document.getElementById('include-farewell')?.checked || false;
 
   let html = '';
   
   // Título principal con color
   html += `<span class="output-title">Prompt para Asistente IA – "${businessName}"</span>\n\n`;
-  
-  // Contexto principal
-  html += `Actúa como el encargado de tomar pedidos para "${businessName}", por WhatsApp.\n`;
-  html += `Sigue este flujo de conversación usando mensajes concisos, emojis y negritas con asteriscos *texto*.\n`;
-  html += `Mantente siempre en contexto de pedidos.\n\n`;
 
-  // Instrucciones generales
-  html += `<span class="output-section">**Instrucciones Generales:**</span>\n`;
-  if (tone) html += `- Tono: ${tone}\n`;
-  if (format) html += `- Formato: ${format}\n`;
-  if (includeGreeting) html += `- Incluye saludo inicial\n`;
-  if (includeFarewell) html += `- Incluye despedida\n\n`;
-
-  // Reglas de comportamiento
-  const validRules = state.rules.filter(r => r.trim());
-  if (validRules.length > 0) {
-    html += `<span class="output-section">**Reglas de comportamiento:**</span>\n`;
-    validRules.forEach((rule, index) => {
-      html += `<span class="output-step-number">${index + 1}.</span> ${rule}\n`;
+  // Secciones dinámicas
+  state.sections.forEach(section => {
+    const validFields = section.fields.filter(field => {
+      if (field.type === 'text') return field.items && field.items.some(item => item.trim());
+      if (field.type === 'textarea') return field.value && field.value.trim();
+      if (field.type === 'list') return field.items && field.items.some(item => item.trim());
+      return false;
     });
-    html += '\n';
-  }
-
-  // Preguntas frecuentes
-  const validFaqs = state.faqs.filter(f => f.question.trim() && f.answer.trim());
-  if (validFaqs.length > 0) {
-    html += `<span class="output-section">**Preguntas Frecuentes:**</span>\n`;
-    validFaqs.forEach(faq => {
-      html += `- <span class="output-question">**${faq.question}**</span>\n`;
-      html += `  <span class="output-answer">${faq.answer}</span>\n`;
-    });
-    html += '\n';
-  }
+    
+    if (validFields.length > 0) {
+      html += `<span class="output-section">**${section.name}:**</span>\n`;
+      
+      validFields.forEach(field => {
+        if (field.type === 'text') {
+          const validItems = field.items.filter(item => item.trim());
+          if (validItems.length > 0) {
+            validItems.forEach((item) => {
+              html += `- ${item}\n`;
+            });
+          }
+        } else if (field.type === 'textarea') {
+          html += `${field.value}\n`;
+        } else if (field.type === 'list') {
+          const validItems = field.items.filter(item => item.trim());
+          if (validItems.length > 0) {
+            validItems.forEach((item, index) => {
+              html += `<span class="output-step-number">${index + 1}.</span> ${item}\n`;
+            });
+          }
+        }
+      });
+      html += '\n';
+    }
+  });
 
   // Flujos
   state.flows.forEach((flow, flowIndex) => {
@@ -606,6 +820,17 @@ function updatePrompt() {
     });
   });
 
+  // Preguntas frecuentes (movidas al final)
+  const validFaqs = state.faqs.filter(f => f.question.trim() && f.answer.trim());
+  if (validFaqs.length > 0) {
+    html += `<span class="output-section">**Preguntas Frecuentes:**</span>\n`;
+    validFaqs.forEach(faq => {
+      html += `- <span class="output-question">**${faq.question}**</span>\n`;
+      html += `  <span class="output-answer">${faq.answer}</span>\n`;
+    });
+    html += '\n';
+  }
+
   // Actualizar output con HTML coloreado
   document.getElementById('output').innerHTML = html.trim();
 }
@@ -614,10 +839,11 @@ function updatePrompt() {
 // FUNCIONES AUXILIARES
 // ==========================================
 function renderAll() {
-  renderRules();
   renderFAQs();
   renderFlows();
   renderSteps();
+  renderSections();
+  renderSectionContent();
 }
 
 function escapeHtml(text) {
@@ -692,31 +918,6 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// // ==========================================
-// // AUTO-GUARDADO
-// // ==========================================
-// let autoSaveTimeout;
-
-// function scheduleAutoSave() {
-//   clearTimeout(autoSaveTimeout);
-//   autoSaveTimeout = setTimeout(() => {
-//     if (projects.current) {
-//       console.log('Auto-guardando proyecto...');
-//       projects.saveProject();
-//     }
-//   }, 5000); // Auto-guardar cada 5 segundos después de cambios
-// }
-
-// // Programar auto-guardado cuando hay cambios
-// document.addEventListener('input', () => {
-//   updatePrompt();
-//   scheduleAutoSave();
-// });
-// document.addEventListener('change', () => {
-//   updatePrompt();
-//   scheduleAutoSave();
-// });
-
 // ==========================================
 // AUTO-GUARDADO SILENCIOSO
 // ==========================================
@@ -743,19 +944,12 @@ function showAutoSaveIndicator() {
   const saveBtn = document.querySelector('button[onclick="projects.saveProject()"]');
   if (saveBtn) {
     const originalText = saveBtn.innerHTML;
-    const originalBackground = saveBtn.style.background;
-    const originalColor = saveBtn.style.color;
-
-    // Cambiar a estilo de "guardado" temporalmente
     saveBtn.innerHTML = '✅ Guardado';
     saveBtn.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-    saveBtn.style.color = '#fff';
-
-    // Restaurar estilo original después de 2 segundos
+    
     setTimeout(() => {
       saveBtn.innerHTML = originalText;
-      saveBtn.style.background = originalBackground;
-      saveBtn.style.color = originalColor;
+      saveBtn.style.background = '';
     }, 2000);
   }
 }
@@ -773,8 +967,6 @@ document.addEventListener('change', () => {
 
 // Auto-guardar también cuando se pierda el foco del nombre del proyecto
 document.addEventListener('DOMContentLoaded', function() {
-  // ... código existente ...
-  
   // Agregar listener para auto-guardar cuando se cambie el nombre
   const projectNameInput = document.getElementById('project-name');
   if (projectNameInput) {

@@ -55,47 +55,38 @@
       <div class="tab-content active" id="tab-0">
         <div class="section">
           <h3>🏪 Información del Negocio</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Nombre del Negocio:</label>
-              <input type="text" id="business-name" placeholder="Ej. Empanadas & Bebidas" oninput="updatePrompt()">
-            </div>
-            <div class="form-group">
-              <label>Mensaje de bienvenida:</label>
-              <input type="text" id="welcome-message" placeholder="¡Hola! Bienvenido..." oninput="updatePrompt()">
-            </div>
+          <div class="form-group">
+            <label>Nombre del Negocio:</label>
+            <input type="text" id="business-name" placeholder="Ej. Empanadas & Bebidas" oninput="updatePrompt()">
           </div>
         </div>
 
         <div class="section">
-          <h3>⚙️ Configuración General</h3>
+          <h3>📋 Secciones de Configuración</h3>
           <div class="form-row">
             <div class="form-group">
-              <label>Tono:</label>
-              <input type="text" id="tone" value="Profesional, cordial y claro" oninput="updatePrompt()">
+              <label>Sección actual:</label>
+              <select id="section-selector" onchange="changeSection()"></select>
             </div>
             <div class="form-group">
-              <label>Formato:</label>
-              <input type="text" id="format" value="Respuestas breves, máximo 3 renglones" oninput="updatePrompt()">
+              <label>Nombre:</label>
+              <input type="text" id="section-name" oninput="renameSection()">
             </div>
           </div>
-          
           <div class="form-row">
-            <label class="checkbox-label">
-              <input type="checkbox" id="include-greeting" checked onchange="updatePrompt()">
-              Incluir saludo inicial
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="include-farewell" checked onchange="updatePrompt()">
-              Incluir despedida
-            </label>
+            <button type="button" class="btn-small" onclick="addSection()">➕ Nueva Sección</button>
+            <button type="button" class="btn-small btn-danger" onclick="deleteSection()">🗑️ Eliminar</button>
           </div>
         </div>
 
-        <div class="section">
-          <h3>📋 Reglas de Comportamiento</h3>
-          <div id="rules-container" class="dynamic-list"></div>
-          <button type="button" class="btn-small" onclick="addRule()">➕ Agregar Regla</button>
+        <div>
+          <h3>Contenido de la Sección:</h3>
+          <div id="section-content-container"></div>
+          <div class="form-row">
+            <button type="button" class="btn-small" onclick="addTextField()">➕ Campo de Texto</button>
+            <button type="button" class="btn-small" onclick="addTextAreaField()">➕ Área de Texto</button>
+            <button type="button" class="btn-small" onclick="addListField()">➕ Lista</button>
+          </div>
         </div>
       </div>
 

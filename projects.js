@@ -241,15 +241,11 @@ const projects = {
   getCurrentState() {
     return {
       businessName: document.getElementById('business-name')?.value || '',
-      welcomeMessage: document.getElementById('welcome-message')?.value || '',
-      tone: document.getElementById('tone')?.value || '',
-      format: document.getElementById('format')?.value || '',
-      includeGreeting: document.getElementById('include-greeting')?.checked || false,
-      includeFarewell: document.getElementById('include-farewell')?.checked || false,
-      rules: state.rules,
+      sections: state.sections,
       faqs: state.faqs,
       flows: state.flows,
       currentFlow: state.currentFlow,
+      currentSection: state.currentSection,
       // IMPORTANTE: Incluir las funciones en el estado del proyecto
       functions: functions.getAll()
     };
@@ -257,31 +253,17 @@ const projects = {
 
   // Cargar estado en la aplicación
   loadState(data) {
-    // Cargar campos del formulario
+    // Cargar campo del negocio
     if (data.businessName !== undefined) {
       document.getElementById('business-name').value = data.businessName;
     }
-    if (data.welcomeMessage !== undefined) {
-      document.getElementById('welcome-message').value = data.welcomeMessage;
-    }
-    if (data.tone !== undefined) {
-      document.getElementById('tone').value = data.tone;
-    }
-    if (data.format !== undefined) {
-      document.getElementById('format').value = data.format;
-    }
-    if (data.includeGreeting !== undefined) {
-      document.getElementById('include-greeting').checked = data.includeGreeting;
-    }
-    if (data.includeFarewell !== undefined) {
-      document.getElementById('include-farewell').checked = data.includeFarewell;
-    }
     
     // Cargar datos del estado
-    if (data.rules) state.rules = data.rules;
+    if (data.sections) state.sections = data.sections;
     if (data.faqs) state.faqs = data.faqs;
     if (data.flows) state.flows = data.flows;
     if (data.currentFlow !== undefined) state.currentFlow = data.currentFlow;
+    if (data.currentSection !== undefined) state.currentSection = data.currentSection;
     
     // IMPORTANTE: Cargar las funciones del proyecto
     if (data.functions) {
@@ -289,23 +271,91 @@ const projects = {
       functions.save();
       functions.render();
     }
+
+    // Migrar datos del formato anterior si existen
+    this.migrateOldConfigData(data);
+  },
+
+  // Migrar configuración del formato anterior al nuevo
+  migrateOldConfigData(data) {
+    // Si existen datos del formato anterior, migrarlos
+    if (data.tone || data.format || data.rules) {
+      console.log('Migrando configuración al nuevo formato...');
+      
+      // Encontrar o crear sección de "Instrucciones Generales"
+      let generalSection = state.sections.find(s => s.name === "Instrucciones Generales");
+      if (!generalSection) {
+        generalSection = { name: "Instrucciones Generales", fields: [] };
+        state.sections.unshift(generalSection);
+      }
+      
+      // Migrar tono y formato al nuevo formato (como items en lugar de value)
+      if (data.tone && !generalSection.fields.find(f => f.label === "Tono")) {
+        generalSection.fields.push({ type: "text", label: "Tono", items: [data.tone] });
+      }
+      if (data.format && !generalSection.fields.find(f => f.label === "Formato")) {
+        generalSection.fields.push({ type: "text", label: "Formato", items: [data.format] });
+      }
+      
+      // Migrar reglas
+      if (data.rules && data.rules.length > 0) {
+        let rulesSection = state.sections.find(s => s.name === "Reglas de comportamiento");
+        if (!rulesSection) {
+          rulesSection = { name: "Reglas de comportamiento", fields: [] };
+          state.sections.push(rulesSection);
+        }
+        
+        // Solo migrar si no existe ya una lista de reglas
+        if (!rulesSection.fields.find(f => f.type === "list" && f.label === "Reglas")) {
+          rulesSection.fields.push({
+            type: "list",
+            label: "Reglas",
+            items: data.rules
+          });
+        }
+      }
+    }
+
+    // Migrar campos de texto del formato anterior (value) al nuevo (items)
+    state.sections.forEach(section => {
+      section.fields.forEach(field => {
+        if (field.type === 'text' && field.value && !field.items) {
+          // Convertir de formato anterior (value) a nuevo (items)
+          field.items = [field.value];
+          delete field.value;
+        }
+      });
+    });
   },
 
   // Resetear estado a valores por defecto
   resetState() {
     // Limpiar formulario
     document.getElementById('business-name').value = '';
-    document.getElementById('welcome-message').value = '';
-    document.getElementById('tone').value = 'Profesional, cordial y claro';
-    document.getElementById('format').value = 'Respuestas breves, máximo 3 renglones';
-    document.getElementById('include-greeting').checked = true;
-    document.getElementById('include-farewell').checked = true;
     
-    // Resetear estado
-    state.rules = [
-      "Pregunta una cosa a la vez",
-      "Envía los enlaces sin formato",
-      "No proporciones información fuera de este documento"
+    // Resetear secciones a valores por defecto
+    state.sections = [
+      {
+        name: "Instrucciones Generales",
+        fields: [
+          { type: "text", label: "Configuración", items: ["Profesional, cordial y claro", "Respuestas breves, máximo 3 renglones"] },
+          { type: "textarea", label: "Contexto", value: "Actúa como encargado de tomar pedidos por WhatsApp" }
+        ]
+      },
+      {
+        name: "Reglas de comportamiento", 
+        fields: [
+          { 
+            type: "list", 
+            label: "Reglas", 
+            items: [
+              "Pregunta una cosa a la vez",
+              "Envía los enlaces sin formato", 
+              "No proporciones información fuera de este documento"
+            ]
+          }
+        ]
+      }
     ];
     
     state.faqs = [
@@ -322,6 +372,7 @@ const projects = {
     }];
     
     state.currentFlow = 0;
+    state.currentSection = 0;
     state.currentTab = 0;
     
     // IMPORTANTE: Resetear funciones a las predeterminadas
