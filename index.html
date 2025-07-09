@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador de Flujo Conversacional IA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()"></button>
+  
+  <div class="container">
+    <!-- Panel de configuración -->
+    <div class="panel">
+      <h2>🤖 Generador de Flujos IA</h2>
+      
+      <!-- Gestión de Proyectos -->
+      <div class="section projects-section">
+        <h3>📁 Proyectos</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Proyecto actual:</label>
+            <select id="project-selector" onchange="projects.loadProject(this.value)">
+              <option value="">Nuevo proyecto...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nombre:</label>
+            <input type="text" id="project-name" placeholder="Nombre del proyecto">
+          </div>
+        </div>
+        <div class="project-controls">
+          <button type="button" class="btn-small" onclick="projects.saveProject()">💾 Guardar</button>
+          <button type="button" class="btn-small" onclick="projects.newProject()">➕ Nuevo</button>
+          <button type="button" class="btn-small btn-danger" onclick="projects.deleteProject()">🗑️ Eliminar</button>
+          <button type="button" class="btn-small" onclick="projects.exportProject()">📤 Exportar</button>
+          <button type="button" class="btn-small" onclick="projects.importProject()">📥 Importar</button>
+        </div>
+      </div>
+      
+      <!-- Pestañas -->
+      <div class="tabs">
+        <button class="tab active" onclick="showTab(0)">⚙️ Config</button>
+        <button class="tab" onclick="showTab(1)">🔄 Flujos</button>
+        <button class="tab" onclick="showTab(2)">❓ FAQ</button>
+        <button class="tab" onclick="showTab(3)">⚡ Funciones</button>
+      </div>
+
+      <!-- Configuración Básica -->
+      <div class="tab-content active" id="tab-0">
+        <div class="section">
+          <h3>🏪 Información del Negocio</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre del Negocio:</label>
+              <input type="text" id="business-name" placeholder="Ej. Empanadas & Bebidas" oninput="updatePrompt()">
+            </div>
+            <div class="form-group">
+              <label>Mensaje de bienvenida:</label>
+              <input type="text" id="welcome-message" placeholder="¡Hola! Bienvenido..." oninput="updatePrompt()">
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>⚙️ Configuración General</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tono:</label>
+              <input type="text" id="tone" value="Profesional, cordial y claro" oninput="updatePrompt()">
+            </div>
+            <div class="form-group">
+              <label>Formato:</label>
+              <input type="text" id="format" value="Respuestas breves, máximo 3 renglones" oninput="updatePrompt()">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-greeting" checked onchange="updatePrompt()">
+              Incluir saludo inicial
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-farewell" checked onchange="updatePrompt()">
+              Incluir despedida
+            </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>📋 Reglas de Comportamiento</h3>
+          <div id="rules-container" class="dynamic-list"></div>
+          <button type="button" class="btn-small" onclick="addRule()">➕ Agregar Regla</button>
+        </div>
+      </div>
+
+      <!-- Gestión de Flujos -->
+      <div class="tab-content" id="tab-1">
+        <div class="section">
+          <h3>🔄 Flujos</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Flujo actual:</label>
+              <select id="flow-selector" onchange="changeFlow()"></select>
+            </div>
+            <div class="form-group">
+              <label>Nombre:</label>
+              <input type="text" id="flow-name" oninput="renameFlow()">
+            </div>
+          </div>
+          <div class="form-row">
+            <button type="button" class="btn-small" onclick="addFlow()">➕ Nuevo Flujo</button>
+            <button type="button" class="btn-small btn-danger" onclick="deleteFlow()">🗑️ Eliminar</button>
+          </div>
+        </div>
+
+        <div>
+          <h3>Pasos del Flujo:</h3>
+          <div id="steps-container"></div>
+          <button type="button" onclick="addStep()">➕ Agregar Paso</button>
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="tab-content" id="tab-2">
+        <div class="section">
+          <h3>❓ Preguntas Frecuentes</h3>
+          <div id="faq-container" class="dynamic-list"></div>
+          <button type="button" class="btn-small" onclick="addFAQ()">➕ Agregar FAQ</button>
+        </div>
+      </div>
+
+      <!-- Gestión de Funciones -->
+      <div class="tab-content" id="tab-3">
+        <div class="section">
+          <h3>⚡ Funciones Disponibles</h3>
+          <div id="functions-list"></div>
+          <button type="button" class="btn-small" onclick="functions.addFunction()">➕ Nueva Función</button>
+          <button type="button" class="btn-small" onclick="functions.loadDefaults()">🔄 Cargar Predeterminadas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de salida -->
+    <div class="panel output">
+      <button class="copy-btn" onclick="copyPrompt()">
+        <span>📋</span>
+        <span>Copiar</span>
+      </button>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="functions.js"></script>
+  <script src="projects.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
