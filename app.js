@@ -692,19 +692,72 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// // ==========================================
+// // AUTO-GUARDADO
+// // ==========================================
+// let autoSaveTimeout;
+
+// function scheduleAutoSave() {
+//   clearTimeout(autoSaveTimeout);
+//   autoSaveTimeout = setTimeout(() => {
+//     if (projects.current) {
+//       console.log('Auto-guardando proyecto...');
+//       projects.saveProject();
+//     }
+//   }, 5000); // Auto-guardar cada 5 segundos después de cambios
+// }
+
+// // Programar auto-guardado cuando hay cambios
+// document.addEventListener('input', () => {
+//   updatePrompt();
+//   scheduleAutoSave();
+// });
+// document.addEventListener('change', () => {
+//   updatePrompt();
+//   scheduleAutoSave();
+// });
+
 // ==========================================
-// AUTO-GUARDADO
+// AUTO-GUARDADO SILENCIOSO
 // ==========================================
 let autoSaveTimeout;
 
 function scheduleAutoSave() {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(() => {
-    if (projects.current) {
+    const projectName = document.getElementById('project-name').value.trim();
+    if (projectName) {
       console.log('Auto-guardando proyecto...');
-      projects.saveProject();
+      const success = projects.saveProject(true); // true = modo silencioso
+      if (success) {
+        // Opcional: mostrar indicador visual sutil de guardado
+        showAutoSaveIndicator();
+      }
     }
   }, 5000); // Auto-guardar cada 5 segundos después de cambios
+}
+
+// Función opcional para mostrar indicador visual sutil
+function showAutoSaveIndicator() {
+  // Buscar el botón de guardar para mostrar feedback visual
+  const saveBtn = document.querySelector('button[onclick="projects.saveProject()"]');
+  if (saveBtn) {
+    const originalText = saveBtn.innerHTML;
+    const originalBackground = saveBtn.style.background;
+    const originalColor = saveBtn.style.color;
+
+    // Cambiar a estilo de "guardado" temporalmente
+    saveBtn.innerHTML = '✅ Guardado';
+    saveBtn.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+    saveBtn.style.color = '#fff';
+
+    // Restaurar estilo original después de 2 segundos
+    setTimeout(() => {
+      saveBtn.innerHTML = originalText;
+      saveBtn.style.background = originalBackground;
+      saveBtn.style.color = originalColor;
+    }, 2000);
+  }
 }
 
 // Programar auto-guardado cuando hay cambios
@@ -712,7 +765,21 @@ document.addEventListener('input', () => {
   updatePrompt();
   scheduleAutoSave();
 });
+
 document.addEventListener('change', () => {
   updatePrompt();
   scheduleAutoSave();
+});
+
+// Auto-guardar también cuando se pierda el foco del nombre del proyecto
+document.addEventListener('DOMContentLoaded', function() {
+  // ... código existente ...
+  
+  // Agregar listener para auto-guardar cuando se cambie el nombre
+  const projectNameInput = document.getElementById('project-name');
+  if (projectNameInput) {
+    projectNameInput.addEventListener('blur', () => {
+      scheduleAutoSave();
+    });
+  }
 });

@@ -31,17 +31,51 @@ const functions = {
       'manage_contact_tags': {
         name: 'Gestionar tags de contacto',
         description: 'Permite agregar o eliminar tags de contactos',
-        params: []
+        params: [
+          {
+            name: 'operation',
+            label: 'Operación *',
+            type: 'select',
+            required: true,
+            options: ['ADD', 'DELETE']
+          },
+          {
+            name: 'tagId',
+            label: 'ID del Tag *',
+            type: 'text',
+            required: true
+          }
+        ]
       },
       'send_ai_match_rule_to_user': {
         name: 'Enviar regla de IA al usuario',
         description: 'Envía una regla de coincidencia específica de IA al usuario',
-        params: []
+        params: [
+          {
+            name: 'match',
+            label: 'Regla de coincidencia *',
+            type: 'text',
+            required: true
+          }
+        ]
       },
       'send_notification_message': {
         name: 'Enviar notificación',
         description: 'Envía una notificación por WhatsApp al encargado del negocio',
-        params: []
+        params: [
+          {
+            name: 'whatsapp',
+            label: 'Número de WhatsApp *',
+            type: 'text',
+            required: true
+          },
+          {
+            name: 'message',
+            label: 'Mensaje a enviar *',
+            type: 'textarea',
+            required: true
+          }
+        ]
       }
     };
     
@@ -183,6 +217,7 @@ const functions = {
                   <span><strong>${param.label}</strong> (${param.name})</span>
                   <span style="margin-left: 8px; color: var(--text-secondary);">
                     ${param.type}${param.required ? ' *' : ''}
+                    ${param.options ? ` [${param.options.join(', ')}]` : ''}
                   </span>
                   <button class="btn-small btn-danger" style="float: right; margin: -4px;" 
                           onclick="functions.deleteParam('${key}', ${index})">×</button>

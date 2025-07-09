@@ -10,39 +10,14 @@ const projects = {
     this.render();
   },
 
-  // Crear nuevo proyecto
-  newProject() {
-    const name = document.getElementById('project-name').value.trim();
-    if (!name) {
-      alert('Por favor, ingresa un nombre para el proyecto');
-      document.getElementById('project-name').focus();
-      return;
-    }
-
-    if (this.saved[name]) {
-      if (!confirm('Ya existe un proyecto con ese nombre. ¿Sobrescribir?')) {
-        return;
-      }
-    }
-
-    // Limpiar estado actual para nuevo proyecto
-    this.resetState();
-    this.current = name;
-    
-    // Actualizar UI
-    this.render();
-    renderAll();
-    updatePrompt();
-    
-    alert(`Proyecto "${name}" creado exitosamente`);
-  },
-
   // Guardar proyecto actual
-  saveProject() {
+  saveProject(silent = false) {
     const name = document.getElementById('project-name').value.trim();
     if (!name) {
-      alert('Por favor, ingresa un nombre para el proyecto');
-      return;
+      if (!silent) {
+        alert('Por favor, ingresa un nombre para el proyecto');
+      }
+      return false;
     }
 
     // Crear datos del proyecto
@@ -59,7 +34,11 @@ const projects = {
     this.save();
     this.render();
     
-    alert(`Proyecto "${name}" guardado exitosamente`);
+    if (!silent) {
+      alert(`Proyecto "${name}" guardado exitosamente`);
+    }
+    
+    return true;
   },
 
   // Cargar proyecto
