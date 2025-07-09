@@ -1,8 +1,9 @@
 // Gestión de proyectos para el generador de flujos IA
 const projects = {
-  // Proyectos guardados
+  // Proyectos guardados con versiones
   saved: {},
   current: null,
+  currentVersion: null,
 
   // Inicializar
   init() {
@@ -10,7 +11,7 @@ const projects = {
     this.render();
   },
 
-  // Guardar proyecto actual
+  // Guardar proyecto actual (ahora con versiones)
   saveProject(silent = false) {
     const name = document.getElementById('project-name').value.trim();
     if (!name) {
@@ -20,22 +21,40 @@ const projects = {
       return false;
     }
 
-    // Crear datos del proyecto
-    const projectData = {
-      name: name,
-      created: this.saved[name]?.created || new Date().toISOString(),
-      modified: new Date().toISOString(),
+    // Crear timestamp para la versión
+    const now = new Date();
+    const timestamp = now.toISOString();
+    const displayTimestamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+    // Inicializar proyecto si no existe
+    if (!this.saved[name]) {
+      this.saved[name] = {
+        name: name,
+        created: timestamp,
+        versions: {}
+      };
+    }
+
+    // Crear nueva versión
+    const versionData = {
+      created: timestamp,
       data: this.getCurrentState()
     };
 
-    this.saved[name] = projectData;
+    // Guardar versión
+    this.saved[name].versions[timestamp] = versionData;
+    this.saved[name].modified = timestamp;
+    
+    // Establecer como versión actual
     this.current = name;
+    this.currentVersion = timestamp;
     
     this.save();
     this.render();
+    this.renderVersions();
     
     if (!silent) {
-      alert(`Proyecto "${name}" guardado exitosamente`);
+      alert(`Proyecto "${name}" guardado exitosamente\nNueva versión: ${displayTimestamp}`);
     }
     
     return true;
@@ -46,8 +65,10 @@ const projects = {
     if (!name) {
       // Nuevo proyecto vacío
       this.current = null;
+      this.currentVersion = null;
       document.getElementById('project-name').value = '';
       this.resetState();
+      this.renderVersions();
       renderAll();
       updatePrompt();
       return;
@@ -62,14 +83,45 @@ const projects = {
     this.current = name;
     document.getElementById('project-name').value = name;
     
-    // Cargar datos del proyecto
-    this.loadState(project.data);
+    // Cargar la versión más reciente por defecto
+    const versions = Object.keys(project.versions);
+    if (versions.length > 0) {
+      const latestVersion = versions.sort().pop();
+      this.currentVersion = latestVersion;
+      this.loadState(project.versions[latestVersion].data);
+    }
+    
+    // Actualizar UI
+    this.renderVersions();
+    renderAll();
+    updatePrompt();
+    
+    console.log(`Proyecto "${name}" cargado exitosamente`);
+  },
+
+  // Cargar versión específica
+  loadVersion(versionTimestamp) {
+    if (!this.current || !versionTimestamp) {
+      return;
+    }
+
+    const project = this.saved[this.current];
+    const version = project?.versions[versionTimestamp];
+    
+    if (!version) {
+      alert('Versión no encontrada');
+      return;
+    }
+
+    this.currentVersion = versionTimestamp;
+    this.loadState(version.data);
     
     // Actualizar UI
     renderAll();
     updatePrompt();
     
-    console.log(`Proyecto "${name}" cargado exitosamente`);
+    const displayTime = new Date(versionTimestamp).toLocaleString();
+    console.log(`Versión cargada: ${displayTime}`);
   },
 
   // Eliminar proyecto
@@ -79,16 +131,19 @@ const projects = {
       return;
     }
 
-    if (confirm(`¿Eliminar el proyecto "${this.current}"?`)) {
+    const versionCount = Object.keys(this.saved[this.current].versions || {}).length;
+    if (confirm(`¿Eliminar el proyecto "${this.current}" con ${versionCount} versiones?`)) {
       delete this.saved[this.current];
       this.save();
       
       // Reset to new project
       this.current = null;
+      this.currentVersion = null;
       document.getElementById('project-name').value = '';
       this.resetState();
       
       this.render();
+      this.renderVersions();
       renderAll();
       updatePrompt();
       
@@ -282,17 +337,43 @@ const projects = {
     
     // Ordenar proyectos por fecha de modificación (más recientes primero)
     const sortedProjects = Object.keys(this.saved).sort((a, b) => {
-      const dateA = new Date(this.saved[a].modified);
-      const dateB = new Date(this.saved[b].modified);
+      const dateA = new Date(this.saved[a].modified || this.saved[a].created);
+      const dateB = new Date(this.saved[b].modified || this.saved[b].created);
       return dateB - dateA;
     });
     
     sortedProjects.forEach(name => {
       const project = this.saved[name];
+      const versionCount = Object.keys(project.versions || {}).length;
       const option = document.createElement('option');
       option.value = name;
-      option.textContent = `${name} (${new Date(project.modified).toLocaleDateString()})`;
+      option.textContent = `${name} (${versionCount} versiones)`;
       option.selected = name === this.current;
+      selector.appendChild(option);
+    });
+  },
+
+  // Renderizar selector de versiones
+  renderVersions() {
+    const selector = document.getElementById('version-selector');
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="">Seleccionar versión...</option>';
+    
+    if (!this.current || !this.saved[this.current]) {
+      return;
+    }
+
+    const project = this.saved[this.current];
+    const versions = Object.keys(project.versions || {}).sort().reverse(); // Más recientes primero
+    
+    versions.forEach(timestamp => {
+      const version = project.versions[timestamp];
+      const date = new Date(timestamp);
+      const option = document.createElement('option');
+      option.value = timestamp;
+      option.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+      option.selected = timestamp === this.currentVersion;
       selector.appendChild(option);
     });
   },
@@ -383,6 +464,7 @@ const projects = {
   save() {
     localStorage.setItem('projects', JSON.stringify(this.saved));
     localStorage.setItem('currentProject', this.current || '');
+    localStorage.setItem('currentVersion', this.currentVersion || '');
   },
 
   // Cargar desde localStorage
@@ -391,6 +473,8 @@ const projects = {
     if (saved) {
       try {
         this.saved = JSON.parse(saved);
+        // Migrar proyectos antiguos al nuevo formato
+        this.migrateOldProjects();
       } catch (e) {
         console.error('Error loading projects:', e);
         this.saved = {};
@@ -398,6 +482,7 @@ const projects = {
     }
     
     this.current = localStorage.getItem('currentProject') || null;
+    this.currentVersion = localStorage.getItem('currentVersion') || null;
     
     // Si hay un proyecto actual, cargarlo
     if (this.current && this.saved[this.current]) {
@@ -405,5 +490,32 @@ const projects = {
         this.loadProject(this.current);
       }, 100);
     }
+  },
+
+  // Migrar proyectos del formato anterior al nuevo con versiones
+  migrateOldProjects() {
+    Object.keys(this.saved).forEach(projectName => {
+      const project = this.saved[projectName];
+      
+      // Si el proyecto no tiene el formato nuevo, migrarlo
+      if (project.data && !project.versions) {
+        const oldData = project.data;
+        const timestamp = project.modified || project.created || new Date().toISOString();
+        
+        this.saved[projectName] = {
+          name: projectName,
+          created: project.created || timestamp,
+          modified: timestamp,
+          versions: {
+            [timestamp]: {
+              created: timestamp,
+              data: oldData
+            }
+          }
+        };
+        
+        console.log(`Migrado proyecto: ${projectName}`);
+      }
+    });
   }
 };
